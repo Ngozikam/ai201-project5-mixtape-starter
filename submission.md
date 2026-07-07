@@ -1,0 +1,86 @@
+# Mixtape Bug Hunt Submission
+
+## Milestone 1: Codebase Map
+
+### Application Structure
+
+Mixtape is a Flask-based social music application that allows users to share and search for songs, rate songs, create collaborative playlists, track listening streaks, view friends' listening activity, and receive notifications. The application follows a route-service-model structure in which routes handle HTTP requests and responses, services contain most of the business logic, and SQLAlchemy models define and connect the application's database entities.
+
+### Main Files and Responsibilities
+
+#### `app.py`
+
+`app.py` implements the Flask application factory and database setup. The `create_app()` function configures the SQLite database and secret key, initializes SQLAlchemy, and registers the song, playlist, user, and feed Blueprints with their corresponding URL prefixes. It also creates the database tables within the application context before returning the configured Flask application.
+
+#### `models.py`
+
+`models.py` defines seven SQLAlchemy models: `User`, `Tag`, `Song`, `ListeningEvent`, `Rating`, `Playlist`, and `Notification`. It also defines association tables for user friendships, song tags, and playlist entries. The `playlist_entries` table stores the position of each song in a playlist, the user who added it, and the time it was added. Relationships connect users to shared songs, ratings, listening events, notifications, playlists, and friends.
+
+#### `routes/songs.py`
+
+`routes/songs.py` defines endpoints for searching songs, retrieving individual songs, rating songs, and recording listening events. The routes validate request data and delegate business logic to `search_service.py`, `notification_service.py`, and `streak_service.py`.
+
+#### `routes/playlists.py`
+
+`routes/playlists.py` defines endpoints for creating playlists, retrieving playlist details, retrieving playlist songs, and adding songs to playlists. It validates request data and delegates business logic to `playlist_service.py` and `notification_service.py`.
+
+#### `routes/users.py`
+
+`routes/users.py` defines endpoints for retrieving user information, checking listening streaks, retrieving notifications, and marking notifications as read. User retrieval accesses the `User` model directly, while streak and notification operations are delegated to the appropriate service functions.
+
+#### `routes/feed.py`
+
+`routes/feed.py` defines endpoints for retrieving a user's friends-listening-now feed and activity feed. It delegates the business logic to `feed_service.py` and formats the returned results as JSON responses.
+
+#### `services/streak_service.py`
+
+`streak_service.py` contains the business logic for recording listening events and maintaining user listening streaks. It creates `ListeningEvent` records, updates a user's streak based on the date of the previous listening event, and retrieves the current streak value.
+
+#### `services/feed_service.py`
+
+`feed_service.py` contains the business logic for the friends-listening-now and activity feeds. It queries listening events from a user's friends, orders events by recency, retrieves the associated user and song records, and formats the results. The listening-now feature also applies a time threshold and returns only the most recent event for each friend.
+
+#### `services/search_service.py`
+
+`search_service.py` contains the business logic for searching and retrieving songs. The `search_songs()` function performs a case-insensitive search against song titles and artist names and joins the `song_tags` association table. The `get_song()` function retrieves a specific song by its ID.
+
+#### `services/notification_service.py`
+
+`notification_service.py` handles notification creation and retrieval, marking notifications as read, adding songs to playlists, and rating songs. It performs database queries, applies business rules, creates or updates records, and commits database changes.
+
+#### `services/playlist_service.py`
+
+`playlist_service.py` contains the business logic for creating and retrieving playlists. It validates playlist creators, creates new playlist records, retrieves playlist metadata, retrieves playlists created by a user, and queries playlist songs through the `playlist_entries` association table in ascending position order.
+
+### Data Flow: Rating a Song
+
+When a user rates a song, the client sends a `POST` request to `/songs/<song_id>/rate`. The `rate()` function in `routes/songs.py` reads the `user_id` and `score` from the JSON request and validates that both values were provided. The route then calls `rate_song()` in `services/notification_service.py`.
+
+The `rate_song()` service function validates that the score is between 1 and 5, retrieves the corresponding `Song` and `User` records, and checks whether the user has previously rated the song. If a rating already exists, its score is updated. Otherwise, a new `Rating` record is created. The changes are committed to the database, and the `Rating` object is returned to the route. Finally, `routes/songs.py` converts the rating to a dictionary and returns it as a JSON response with HTTP status 201.
+
+### Pattern I Noticed
+
+The main architectural pattern is separation between routes, services, and models. Routes primarily handle request parsing, input validation, error handling, and response formatting. Service functions contain most of the business logic and database operations, while models define the database entities and their relationships. A feature can therefore be traced from an HTTP endpoint in a route file, through a service function, to the SQLAlchemy models and database.
+
+### Initial Bug-Fix Plan
+
+After reviewing the five open issues and their affected service files, I plan to investigate the following three bugs first:
+
+1. **Issue #5: The last song in a playlist never shows up**  
+   I will trace the playlist retrieval flow from `routes/playlists.py` to `playlist_service.get_playlist_songs()` and examine how the ordered query results are converted into the returned song list.
+
+2. **Issue #1: My listening streak keeps resetting**  
+   I will trace the listening flow from `routes/songs.py` to `streak_service.record_listening_event()` and `update_listening_streak()`. I will reproduce the reported behavior and examine how date differences and calendar-day conditions affect the streak calculation.
+
+3. **Issue #4: Rating a song does not create a notification**  
+   I will trace the rating flow from `routes/songs.py` to `notification_service.rate_song()` and compare it with the working notification flow in `add_to_playlist()`. I will reproduce the issue before determining the root cause.
+
+I chose these three issues as my initial plan because they involve different parts of the application and provide opportunities to trace execution across routes, services, models, and database operations. I will reproduce each bug before modifying the code and document the root cause and fix separately.
+
+### Baseline Test Results
+
+Before making any bug fixes, I ran the existing test suite using `pytest tests/`. The baseline result was 10 passing tests and 3 failing tests. Two failures occurred in the playlist tests, where the returned playlist omitted a song and did not match the expected order. One failure occurred in the streak tests, where the listening streak did not increment as expected on Sunday. These baseline failures provide reproducible evidence of Issues #5 and #1 before any code changes.
+
+### AI Assistance Disclosure
+
+I used AI assistance during codebase orientation to help summarize the responsibilities of the main files and trace the rating feature across the route, service, and model layers. I reviewed the source code directly and verified the documented code structure and execution flow against the repository.
