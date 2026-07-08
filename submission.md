@@ -84,3 +84,51 @@ Before making any bug fixes, I ran the existing test suite using `pytest tests/`
 ### AI Assistance Disclosure
 
 I used AI assistance during codebase orientation to help summarize the responsibilities of the main files and trace the rating feature across the route, service, and model layers. I reviewed the source code directly and verified the documented code structure and execution flow against the repository.
+
+## Milestone 2: Reproduce Chosen Bugs Before Fixing
+
+### Issue #5: The last song in a playlist never shows up
+
+**How I reproduced it:**  
+I ran the playlist tests using `pytest tests/test_playlists.py -v`. The test suite produced two failures and one passing test. The failing tests were `test_playlist_returns_all_songs` and `test_playlist_returns_songs_in_order`.
+
+**Observed behavior:**  
+The playlist returned 4 songs when 5 songs were expected. The ordered playlist result also omitted the final song.
+
+**Expected behavior:**  
+The playlist should return all 5 songs in ascending playlist position order.
+
+**Code changed before reproduction:**  
+No.
+
+---
+
+### Issue #1: My listening streak keeps resetting
+
+**How I reproduced it:**  
+I ran the streak tests using `pytest tests/test_streaks.py -v`. The test suite produced one failure and four passing tests. The failing test was `test_streak_increments_on_sunday`.
+
+**Observed behavior:**  
+The listening streak remained at 1 when it should have incremented to 2 for consecutive-day listening on Sunday.
+
+**Expected behavior:**  
+If a user listened on the previous calendar day, the listening streak should increment by 1 even when the current day is Sunday.
+
+**Code changed before reproduction:**  
+No.
+
+---
+
+### Issue #4: Rating a song does not create a notification
+
+**How I reproduced it:**  
+I used seed data where `Midnight Drive` was shared by `nova`. Before rating, I checked nova's notifications and saw one existing `song_added_to_playlist` notification. Then I had `darius` rate `Midnight Drive` with a score of 5 by calling `rate_song()`. The rating was created successfully.
+
+**Observed behavior:**  
+After the rating was created, nova's notification count remained 1. The only notification was still `song_added_to_playlist`. No `song_rated` notification was created.
+
+**Expected behavior:**  
+When a user rates a song shared by someone else, the original sharer should receive a `song_rated` notification.
+
+**Code changed before reproduction:**  
+No.
