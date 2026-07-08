@@ -1,5 +1,13 @@
 # Mixtape Bug Hunt Submission
 
+## AI Usage
+
+I used ChatGPT as an AI-assisted tool during codebase navigation, debugging, and documentation. During the codebase orientation phase, I provided the relevant route, service, and model files and asked the AI to help explain the responsibilities of each module and trace data flows across the application. This helped me understand the route-service-model architecture and organize the codebase map in my submission document.
+
+During debugging, I used AI assistance after reproducing the bugs and examining the relevant code paths. For the playlist issue, I traced the request from `routes/playlists.py` to `get_playlist_songs()` and used AI assistance to explain the behavior of the `songs[:-1]` list slice. For the streak issue, I traced the listening flow to `update_listening_streak()` and used AI assistance to understand how Python's `weekday()` values affected the Sunday condition. For the notification issue, I compared the working `add_to_playlist()` notification flow with `rate_song()` and used AI assistance to identify the structural difference between the two code paths.
+
+I verified the AI-assisted explanations myself by reading the relevant source code, reproducing each bug before making changes, and running targeted tests after each fix. I also used direct database queries to verify the notification behavior before and after the fix. I did not rely only on AI-generated diagnoses: I confirmed each root cause against the actual execution path and test results. The AI assistance was most useful for explaining unfamiliar code, tracing relationships between files, and helping structure the root cause analysis documentation.
+
 ## Milestone 1: Codebase Map
 
 ### Application Structure
