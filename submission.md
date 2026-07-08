@@ -132,3 +132,27 @@ When a user rates a song shared by someone else, the original sharer should rece
 
 **Code changed before reproduction:**  
 No.
+
+## Milestone 3: Root Cause Analysis
+
+### Issue #5: The last song in a playlist never shows up
+
+**1. Issue number and title**
+
+Issue #5: The last song in a playlist never shows up.
+
+**2. How I reproduced it**
+
+I ran `pytest tests/test_playlists.py -v` before changing any source code. The `test_playlist_returns_all_songs` test failed because the function returned 4 songs when 5 were expected. The `test_playlist_returns_songs_in_order` test also failed because the final song was missing from the ordered result.
+
+**3. How I found the root cause**
+
+I traced the execution flow from the `GET /playlists/<playlist_id>/songs` endpoint in `routes/playlists.py` to the `get_songs()` route function and then to `get_playlist_songs()` in `services/playlist_service.py`. The database query correctly retrieved the playlist songs and ordered them by `playlist_entries.c.position`. I then examined the function's return statement and found that it used `songs[:-1]`, which excluded the final element from the query result.
+
+**4. The root cause**
+
+The root cause was the list slice `songs[:-1]` in `get_playlist_songs()`. In Python, `[:-1]` returns every element except the last one. Although the database query retrieved all playlist songs correctly, the return statement removed the final song before converting the results to dictionaries and returning them to the route.
+
+**5. My fix and side-effect check**
+
+I changed the return statement from `songs[:-1]` to `songs`, allowing every song retrieved by the ordered database query to be returned. I then ran `pytest tests/test_playlists.py -v`. All three playlist tests passed, confirming that the function returns all songs, preserves playlist order, and continues to return an empty list for an empty playlist.
