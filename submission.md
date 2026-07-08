@@ -178,3 +178,25 @@ The root cause was the condition `days_since_last == 1 and today.weekday() != 6`
 **5. My fix and side-effect check**
 
 I removed the unnecessary `today.weekday() != 6` condition so that any `days_since_last` value of 1 increments the listening streak. I then ran `pytest tests/test_streaks.py -v`. All five streak tests passed, confirming that the fix handles Sunday correctly while preserving the expected behavior for new users, consecutive-day listening, repeated listening on the same day, and listening after a skipped day.
+
+### Issue #4: Rating a song does not create a notification
+
+**1. Issue number and title**
+
+Issue #4: Rating a song does not create a notification.
+
+**2. How I reproduced it**
+
+I used the seeded database where `Midnight Drive` was shared by `nova`. Before changing any source code, I checked nova's notifications and confirmed that there was one existing `song_added_to_playlist` notification. I then had `darius` rate `Midnight Drive` with a score of 5 by calling `rate_song()`. The rating was created successfully, but nova's notification count remained at 1 and no `song_rated` notification was created.
+
+**3. How I found the root cause**
+
+I traced the execution flow from the `POST /songs/<song_id>/rate` endpoint in `routes/songs.py` to `rate_song()` in `services/notification_service.py`. I compared this function with the working `add_to_playlist()` function in the same service file. The playlist flow calls `create_notification()` after completing the action, while `rate_song()` created or updated the rating, committed it to the database, and returned the rating without calling `create_notification()`. This comparison identified the missing notification step.
+
+**4. The root cause**
+
+The root cause was that `rate_song()` contained no logic to create a notification after a user rated a song. The function correctly validated the score, retrieved the song and user, created or updated the rating, and committed the database transaction, but it returned immediately afterward. As a result, the original song sharer was never notified when another user rated the song.
+
+**5. My fix and side-effect check**
+
+I added a conditional call to `create_notification()` after the rating was committed. The notification is created only when the user rating the song is different from the user who originally shared it. The notification uses the `song_rated` type and identifies the rater, song title, and rating score. I verified the fix using the seeded database: nova's notification count increased from 1 to 2 after darius rated `Midnight Drive`, and the new `song_rated` notification appeared. I then ran `pytest tests/ -v`, and all 13 tests passed, confirming that the fix did not break the playlist, search, or streak functionality.
