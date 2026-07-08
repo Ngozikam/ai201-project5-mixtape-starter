@@ -6,6 +6,31 @@ This is the starter repo for **Project 5: Mixtape Bug Hunt**. The app has five o
 
 ---
 
+## Project Work Completed
+
+This project focused on navigating an unfamiliar Flask codebase, reproducing reported bugs, tracing execution flow to identify root causes, implementing targeted fixes, and verifying that related functionality remained intact.
+
+### Bugs Fixed
+
+#### Issue #5: The last song in a playlist never shows up
+
+The playlist retrieval service correctly queried and ordered all songs but removed the final song with the `songs[:-1]` list slice. The return statement was corrected to include the complete song list.
+
+#### Issue #1: My listening streak keeps resetting
+
+The streak logic prevented consecutive-day streaks from incrementing on Sunday because `datetime.weekday()` returns `6` for Sunday. The unnecessary day-of-week condition was removed so that streaks increment correctly on any consecutive calendar day.
+
+#### Issue #4: Rating a song does not create a notification
+
+The rating service successfully created or updated ratings but did not notify the original song sharer. Notification creation was added when another user rates a shared song.
+
+### Verification
+
+The fixes were verified through targeted testing, direct database checks, and a full regression test run.
+
+```text
+13 passed
+
 ## App Structure
 
 ```
