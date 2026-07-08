@@ -156,3 +156,25 @@ The root cause was the list slice `songs[:-1]` in `get_playlist_songs()`. In Pyt
 **5. My fix and side-effect check**
 
 I changed the return statement from `songs[:-1]` to `songs`, allowing every song retrieved by the ordered database query to be returned. I then ran `pytest tests/test_playlists.py -v`. All three playlist tests passed, confirming that the function returns all songs, preserves playlist order, and continues to return an empty list for an empty playlist.
+
+### Issue #1: My listening streak keeps resetting
+
+**1. Issue number and title**
+
+Issue #1: My listening streak keeps resetting.
+
+**2. How I reproduced it**
+
+I ran `pytest tests/test_streaks.py -v` before changing any source code. The `test_streak_increments_on_sunday` test failed because the listening streak remained at 1 when it should have incremented to 2 for consecutive-day listening on Sunday.
+
+**3. How I found the root cause**
+
+I traced the execution flow from the `POST /songs/<song_id>/listen` endpoint in `routes/songs.py` to `record_listening_event()` and then to `update_listening_streak()` in `services/streak_service.py`. The function correctly calculated `days_since_last`, but I found an additional condition in the consecutive-day branch that checked `today.weekday() != 6`. Since Python's `weekday()` method returns 6 for Sunday, this condition prevented the streak from incrementing on Sunday.
+
+**4. The root cause**
+
+The root cause was the condition `days_since_last == 1 and today.weekday() != 6`. A user who listened on Saturday and again on Sunday had a `days_since_last` value of 1, but `today.weekday() != 6` evaluated to false because Sunday is represented by 6. The code therefore entered the `else` branch and reset the streak to 1 instead of incrementing it. The day-of-week check was unnecessary because the streak rules depend only on consecutive calendar days.
+
+**5. My fix and side-effect check**
+
+I removed the unnecessary `today.weekday() != 6` condition so that any `days_since_last` value of 1 increments the listening streak. I then ran `pytest tests/test_streaks.py -v`. All five streak tests passed, confirming that the fix handles Sunday correctly while preserving the expected behavior for new users, consecutive-day listening, repeated listening on the same day, and listening after a skipped day.
